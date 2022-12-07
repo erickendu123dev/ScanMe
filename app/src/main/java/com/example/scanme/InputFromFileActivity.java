@@ -17,6 +17,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
@@ -43,8 +44,7 @@ import de.congrace.exp4j.UnparsableExpressionException;
 
 public class InputFromFileActivity extends AppCompatActivity {
 
-    private static final int GalleryPick = 1;
-    private int STORAGE_PERMISSION_CODE = 1;
+    private static final int STORAGE_PERMISSION_CODE = 1234;
     Uri imageuri;
     TextView resultrecognized, inputrecognized;
     ImageView ivfile;
@@ -124,37 +124,24 @@ public class InputFromFileActivity extends AppCompatActivity {
     }
 
     private void openGallery() {
-        if (ContextCompat.checkSelfPermission(InputFromFileActivity.this,
-                Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            Intent galleryIntent = new Intent();
-            galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
-            galleryIntent.setType("image/*");
-            activityResultLauncher.launch(galleryIntent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) ==
+                    PackageManager.PERMISSION_DENIED){
+                String[] permission = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+                requestPermissions(permission, STORAGE_PERMISSION_CODE);
+            } else {
+                openGallery2();
+            }
         } else {
-            requestStoragePermission();
+            openGallery2();
         }
     }
 
-    private void requestStoragePermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Perizinan ini dibutuhkan")
-                    .setMessage("Perizinan ini dibutuhkan untuk mengambil gambar")
-                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            ActivityCompat.requestPermissions(InputFromFileActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
-                        }
-                    }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                        }
-                    }).create().show();
-
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, STORAGE_PERMISSION_CODE);
-        }
+    private void openGallery2() {
+        Intent galleryIntent = new Intent();
+        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
+        galleryIntent.setType("image/*");
+        activityResultLauncher.launch(galleryIntent);
     }
 
     @Override
@@ -162,7 +149,7 @@ public class InputFromFileActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
+                    openGallery();
             } else {
                 Toast.makeText(this, "Perizinan Di Tolak", Toast.LENGTH_SHORT);
             }

@@ -9,10 +9,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -46,8 +50,7 @@ import de.congrace.exp4j.UnparsableExpressionException;
 public class InputFromCameraActivity extends AppCompatActivity {
 
     CardView cvtakephoto;
-    private static final int STORAGE_PERMISSION_CODE = 1234;
-    private static final int CAPTURE_CODE = 1001;
+    private static final int CAMERA_PERMISSION_CODE = 1234;
     Uri imageuri;
     TextView resultrecognized, inputrecognized;
     ImageView ivcapture;
@@ -87,7 +90,7 @@ public class InputFromCameraActivity extends AppCompatActivity {
                             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
                                     PackageManager.PERMISSION_DENIED){
                         String[] permission = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
-                        requestPermissions(permission, STORAGE_PERMISSION_CODE);
+                        requestPermissions(permission, CAMERA_PERMISSION_CODE);
                     } else {
                         openCamera();
                     }
@@ -98,6 +101,38 @@ public class InputFromCameraActivity extends AppCompatActivity {
         });
     }
     private void openCamera(){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (checkSelfPermission(Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_DENIED ||
+                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+                PackageManager.PERMISSION_DENIED){
+                    String[] permission = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+                    requestPermissions(permission, CAMERA_PERMISSION_CODE);
+                } else {
+                    openCamera2();
+                }
+        } else {
+                openCamera2();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode) {
+            case CAMERA_PERMISSION_CODE:
+                if (grantResults.length > 0 && grantResults[0] ==
+                PackageManager.PERMISSION_GRANTED){
+                    openCamera();
+                }
+                else{
+                    Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+                }
+        }
+    }
+
+    private void openCamera2(){
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.TITLE, "new image");
         values.put(MediaStore.Images.Media.DESCRIPTION, "from camera");
@@ -106,21 +141,6 @@ public class InputFromCameraActivity extends AppCompatActivity {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, imageuri);
         activityResultLauncher.launch(intent);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        switch (requestCode) {
-            case STORAGE_PERMISSION_CODE:
-                if (grantResults.length > 0 && grantResults[0]==
-                        PackageManager.PERMISSION_GRANTED){
-                    openCamera();
-                } else {
-                    Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
-                }
-        }
     }
 
     private void recognizedImage() {
@@ -138,6 +158,7 @@ public class InputFromCameraActivity extends AppCompatActivity {
                                 calc = new ExpressionBuilder(recognizedResult).build();
                                 double result1 = calc.calculate();
                                 String result2 = formatNumberCurrency(String.valueOf(result1));
+                                resultrecognized.setText("Result : " + result2);
                                 MyDatabaseHelper myDB = new MyDatabaseHelper(InputFromCameraActivity.this);
                                 myDB.addResult(recognizedResult.trim(),
                                         result2.trim());
